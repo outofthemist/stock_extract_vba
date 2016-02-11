@@ -1,0 +1,215 @@
+Function HKEXSearch()
+
+Application.DisplayAlerts = False
+
+Dim response_text As String
+Dim wb_control As Workbook
+Dim ws_control As Worksheet
+Dim ws_output As Worksheet
+Dim stock_code As String
+Dim stock_name As String
+Dim start_date As Date
+Dim end_date As Date
+Dim category As Integer
+Dim News_title As String
+Set wb_control = ThisWorkbook
+Set ws_control = wb_control.Worksheets("Search")
+Set ws_output = wb_control.Worksheets("Output")
+
+query_item = 15
+output_row = 3
+
+ws_control.Range("A13") = "Program Status: running .... "
+
+pre = Application.CountA(ws_output.Range("B:B")) + 5
+
+ws_output.Range("A3:G" & pre).ClearContents
+
+Do While ws_control.Range("B" & query_item) <> ""
+
+Dim ie As Object
+  
+    Set ie = CreateObject("INTERNETEXPLORER.APPLICATION")
+    ie.Navigate "http://www.hkexnews.hk/listedco/listconews/advancedsearch/search_active_main.aspx"
+    ie.Visible = False
+    
+  
+
+Do Until ie.Busy = False And ie.READYSTATE = 4
+    
+    DoEvents
+    
+Loop
+
+stock_code = ws_control.Range("B" & query_item)
+
+Do While Len(stock_code) <> 5
+    stock_code = "0" & stock_code
+Loop
+
+
+start_date = ws_control.Range("D" & query_item)
+end_date = ws_control.Range("E" & query_item)
+
+category_string = ws_control.Range("C" & query_item)
+
+Select Case category_string
+    
+    Case "All"
+    category = -2
+    
+    Case "Announcements and Notices"
+    category = 1
+    
+    Case "Circulars"
+    category = 2
+    
+    Case "Listing Documents"
+    category = 3
+    
+    Case "Financial Statements/ESG Information"
+    category = 4
+    
+    Case "Next Day Disclosure Returns"
+    category = 13
+    
+    Case "Monthly Returns"
+    category = 14
+    
+    Case "Proxy Forms"
+    category = 7
+    
+    Case "Company Information Sheet (GEM)"
+    category = 11
+    
+    Case "Constitutional Documents"
+    category = 12
+    
+    Case "Debt and Structured Products"
+    category = 5
+    
+    Case "Trading Information of Exchange Traded Funds"
+    category = 9
+    
+    Case "Regulatory Announcement & News"
+    category = 8
+    
+    Case "Share Buyback Reports (Before 1 January 2009)"
+    category = 10
+    
+    Case "Takeovers Code - dealing disclosures"
+    category = 15
+    
+    Case "Application Proofs and Post Hearing Information Packs or PHIPs"
+    category = 16
+    
+End Select
+
+News_title = ws_control.Range("F" & query_item)
+
+ie.document.getElementsByName("ctl00$txt_stock_code")(0).innerText = stock_code
+
+ie.document.getElementsByName("ctl00$sel_DateOfReleaseFrom_d")(0).Value = Left(start_date, 2)
+ie.document.getElementsByName("ctl00$sel_DateOfReleaseFrom_m")(0).Value = Mid(start_date, 4, 2)
+ie.document.getElementsByName("ctl00$sel_DateOfReleaseFrom_y")(0).Value = Year(start_date)
+
+ie.document.getElementsByName("ctl00$sel_DateOfReleaseTo_d")(0).Value = Left(end_date, 2)
+ie.document.getElementsByName("ctl00$sel_DateOfReleaseTo_m")(0).Value = Mid(end_date, 4, 2)
+ie.document.getElementsByName("ctl00$sel_DateOfReleaseTo_y")(0).Value = Year(end_date)
+
+ie.document.getElementsByName("ctl00$sel_tier_1")(0).Value = category
+
+ie.document.getElementsByName("ctl00$txtKeyWord")(0).Value = News_title
+
+
+Call ie.document.parentWindow.execScript("document.forms[0].submit()", "javascript")
+
+
+Do Until ie.Busy = False And ie.READYSTATE = 4
+    
+    DoEvents
+    
+Loop
+
+i = 3
+
+Application.Wait (Now + TimeValue("00:00:05"))
+
+
+Dim a As HTMLDocument
+Dim b As HTMLHtmlElement
+
+
+Do While True
+
+On Error GoTo break_while
+
+If i < 10 Then
+
+ws_output.Range("A" & output_row) = output_row - 2
+
+Set a = ie.document
+If (a Is Nothing) Then
+    GoTo break_while
+End If
+
+Set b = a.getElementById("ctl00_gvMain_ctl0" & i & "_lbDateTime")
+If (b Is Nothing) Then
+    GoTo break_while
+End If
+
+
+ws_output.Range("B" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl0" & i & "_lbDateTime").innerText
+ws_output.Range("C" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl0" & i & "_lbStockCode").innerText
+ws_output.Range("D" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl0" & i & "_lbStockName").innerText
+ws_output.Range("E" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl0" & i & "_lbShortText").innerText
+ws_output.Range("F" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl0" & i & "_hlTitle").innerText
+ws_output.Range("G" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl0" & i & "_hlTitle").href
+output_row = output_row + 1
+
+Else
+
+ws_output.Range("A" & output_row) = output_row - 2
+
+Set a = ie.document
+If (a Is Nothing) Then
+    GoTo break_while
+End If
+
+Set b = a.getElementById("ctl00_gvMain_ctl" & i & "_lbDateTime")
+If (b Is Nothing) Then
+    GoTo break_while
+End If
+
+ws_output.Range("A" & output_row) = output_row - 2
+ws_output.Range("B" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl" & i & "_lbDateTime").innerText
+ws_output.Range("C" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl" & i & "_lbStockCode").innerText
+ws_output.Range("D" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl" & i & "_lbStockName").innerText
+ws_output.Range("E" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl" & i & "_lbShortText").innerText
+ws_output.Range("F" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl" & i & "_hlTitle").innerText
+ws_output.Range("G" & output_row) = ie.document.getElementById("ctl00_gvMain_ctl" & i & "_hlTitle").href
+
+End If
+
+i = i + 1
+
+
+Loop
+
+
+break_while:
+
+ie.Quit
+
+query_item = query_item + 1
+
+Loop
+
+
+ws_control.Range("A13") = "finished "
+
+End Function
+
+Sub HKEX_Search()
+Module1.HKEXSearch
+End Sub
